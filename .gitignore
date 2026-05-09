@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+
+captures/
+scans/
+wordlist/
+
+*.cap
+*.csv
+*.log
+*.netxml
+*.gz
