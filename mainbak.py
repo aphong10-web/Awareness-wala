@@ -15,7 +15,6 @@ from scanner import scan_networks
 # === ADDED: import attack modules directly so we get return values back ===
 from pmkid import run_pmkid_attack
 from capture import run_capture
-from chicken_fry import run_chicken_fry_attack
 # === END ADDED ===
 
 
@@ -115,8 +114,7 @@ def get_available_attacks(target):
     if "WPA" in encryption and "WPA3" not in encryption:
         return [
             "WPA Handshake Capture",
-            "PMKID Attack",
-            "Chicken Fry"
+            "PMKID Attack"
         ]
 
     return []
@@ -191,6 +189,7 @@ def offer_retry(remaining_attacks):
             print("[red]Please enter a valid number.[/red]")
 # === END ADDED ===
 
+
 # === ADDED: run an attack by name and return True/False result ===
 def launch_attack(attack_name, target, interface):
     """
@@ -213,14 +212,8 @@ def launch_attack(attack_name, target, interface):
             ssid=target["ssid"]
         )
 
-    elif attack_name == "Chicken Fry":
-        return run_chicken_fry_attack(
-            bssid=target["bssid"],
-            channel=target["channel"],
-            iface=interface,
-            ssid=target["ssid"]
-        )
-    
+    else:
+        print(f"[red]Unknown attack: {attack_name}[/red]")
         return False
 # === END ADDED ===
 
